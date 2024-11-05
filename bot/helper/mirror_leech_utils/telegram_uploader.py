@@ -49,7 +49,7 @@ class TelegramUploader:
         self._path = path
         self._start_time = time()
         self._total_files = 0
-        self._thumb = ""
+        self._thumb = self._listener.thumb or f"Thumbnails/{listener.user_id}.jpg"
         self._msgs_dict = {}
         self._corrupted = 0
         self._is_corrupted = False
@@ -367,15 +367,15 @@ class TelegramUploader:
         thumb = self._thumb
         self._is_corrupted = False
         try:
-            is_video, is_audio, is_image = "" # await get_document_type(self._up_path)
+            is_video, is_audio, is_image = await get_document_type(self._up_path)
 
             if not is_image and thumb is None:
                 file_name = ospath.splitext(file)[0]
-                thumb_path = "" # f"{self._path}/yt-dlp-thumb/{file_name}.jpg"
+                thumb_path = f"{self._path}/yt-dlp-thumb/{file_name}.jpg"
                 if await aiopath.isfile(thumb_path):
                     thumb = thumb_path
                 elif is_audio and not is_video:
-                    thumb = "" # await get_audio_thumbnail(self._up_path)
+                    thumb = await get_audio_thumbnail(self._up_path)
 
             if (
                 self._listener.as_doc
@@ -384,14 +384,14 @@ class TelegramUploader:
             ):
                 key = "documents"
                 if is_video and thumb is None:
-                    thumb = "" # await get_video_thumbnail(self._up_path, None)
+                    thumb = await get_video_thumbnail(self._up_path, None)
 
                 if self._listener.is_cancelled:
                     return
                 self._sent_msg = await self._sent_msg.reply_document(
                     document=self._up_path,
                     quote=True,
-                    thumb=thumb,
+                    thumb=None,
                     caption=cap_mono,
                     force_document=True,
                     disable_notification=True,
@@ -401,9 +401,13 @@ class TelegramUploader:
                 key = "videos"
                 duration = (await get_media_info(self._up_path))[0]
                 if thumb is None and self._listener.thumbnail_layout:
-                    thumb = "" # await get_multiple_frames_thumbnail(self._up_path, self._listener.thumbnail_layout, self._listener.screen_shots,)
+                    thumb = await get_multiple_frames_thumbnail(
+                        self._up_path,
+                        self._listener.thumbnail_layout,
+                        self._listener.screen_shots,
+                    )
                 if thumb is None:
-                    thumb = "" #await get_video_thumbnail(self._up_path, duration)
+                    thumb = await get_video_thumbnail(self._up_path, duration)
                 if thumb is not None:
                     with Image.open(thumb) as img:
                         width, height = img.size
@@ -419,7 +423,7 @@ class TelegramUploader:
                     duration=duration,
                     width=width,
                     height=height,
-                    thumb=thumb,
+                    thumb=None,
                     supports_streaming=True,
                     disable_notification=True,
                     progress=self._upload_progress,
@@ -436,7 +440,7 @@ class TelegramUploader:
                     duration=duration,
                     performer=artist,
                     title=title,
-                    thumb=thumb,
+                    thumb=None,
                     disable_notification=True,
                     progress=self._upload_progress,
                 )
