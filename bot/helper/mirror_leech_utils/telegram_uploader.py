@@ -49,7 +49,7 @@ class TelegramUploader:
         self._path = path
         self._start_time = time()
         self._total_files = 0
-        self._thumb = self._listener.thumb or f"Thumbnails/{listener.user_id}.jpg"
+        self._thumb = ""
         self._msgs_dict = {}
         self._corrupted = 0
         self._is_corrupted = False
@@ -371,7 +371,7 @@ class TelegramUploader:
 
             if not is_image and thumb is None:
                 file_name = ospath.splitext(file)[0]
-                thumb_path = f"{self._path}/yt-dlp-thumb/{file_name}.jpg"
+                thumb_path = "" # f"{self._path}/yt-dlp-thumb/{file_name}.jpg"
                 if await aiopath.isfile(thumb_path):
                     thumb = thumb_path
                 elif is_audio and not is_video:
