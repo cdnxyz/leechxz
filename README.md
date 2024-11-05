@@ -183,7 +183,7 @@ programming in Python.
 - Clone this repo:
 
 ```
-git clone https://github.com/cdnxyz/leechxz && cd mirrorbot
+git clone https://github.com/cdnxyz/leechxz && cd leechxz
 ```
 
 - For Debian based distros
