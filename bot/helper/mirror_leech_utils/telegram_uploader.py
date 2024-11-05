@@ -416,15 +416,12 @@ class TelegramUploader:
                     height = 320
                 if self._listener.is_cancelled:
                     return
-                self._sent_msg = await self._sent_msg.reply_video(
-                    video=self._up_path,
+                self._sent_msg = await self._sent_msg.reply_document(
+                    document=self._up_path,
                     quote=True,
+                  #  thumb=None,
                     caption=cap_mono,
-                    duration=duration,
-                    width=width,
-                    height=height,
-                   # thumb=None,
-                    supports_streaming=True,
+                    force_document=True,
                     disable_notification=True,
                     progress=self._upload_progress,
                 )
@@ -433,14 +430,12 @@ class TelegramUploader:
                 duration, artist, title = await get_media_info(self._up_path)
                 if self._listener.is_cancelled:
                     return
-                self._sent_msg = await self._sent_msg.reply_audio(
-                    audio=self._up_path,
+                self._sent_msg = await self._sent_msg.reply_document(
+                    document=self._up_path,
                     quote=True,
-                    caption=cap_mono,
-                    duration=duration,
-                    performer=artist,
-                    title=title,
                   #  thumb=None,
+                    caption=cap_mono,
+                    force_document=True,
                     disable_notification=True,
                     progress=self._upload_progress,
                 )
@@ -448,10 +443,12 @@ class TelegramUploader:
                 key = "photos"
                 if self._listener.is_cancelled:
                     return
-                self._sent_msg = await self._sent_msg.reply_photo(
-                    photo=self._up_path,
+                self._sent_msg = await self._sent_msg.reply_document(
+                    document=self._up_path,
                     quote=True,
+                  #  thumb=None,
                     caption=cap_mono,
+                    force_document=True,
                     disable_notification=True,
                     progress=self._upload_progress,
                 )
