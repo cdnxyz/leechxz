@@ -391,7 +391,7 @@ class TelegramUploader:
                 self._sent_msg = await self._sent_msg.reply_document(
                     document=self._up_path,
                     quote=True,
-                    thumb=None,
+                  #  thumb=None,
                     caption=cap_mono,
                     force_document=True,
                     disable_notification=True,
@@ -423,7 +423,7 @@ class TelegramUploader:
                     duration=duration,
                     width=width,
                     height=height,
-                    thumb=None,
+                   # thumb=None,
                     supports_streaming=True,
                     disable_notification=True,
                     progress=self._upload_progress,
@@ -440,7 +440,7 @@ class TelegramUploader:
                     duration=duration,
                     performer=artist,
                     title=title,
-                    thumb=None,
+                  #  thumb=None,
                     disable_notification=True,
                     progress=self._upload_progress,
                 )
