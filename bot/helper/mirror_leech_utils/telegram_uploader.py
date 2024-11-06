@@ -185,7 +185,7 @@ class TelegramUploader:
         rlist = []
         for msg in self._media_dict[key][subkey]:
             if key == "videos":
-                input_media = InputMediaDocument(
+                input_media = InputMediaVideo(
                     media=msg.video.file_id, caption=msg.caption
                 )
             else:
