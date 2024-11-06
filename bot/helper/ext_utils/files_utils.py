@@ -2,7 +2,7 @@ from aiofiles.os import remove, path as aiopath, listdir, rmdir
 from aioshutil import rmtree as aiormtree
 from magic import Magic
 from os import walk, path as ospath, makedirs
-from re import split as re_split, I, search as re_search, escape
+from re import split as re_split, I, search as re_search, sub as re_sub, escape
 from shutil import rmtree
 from subprocess import run as srun
 from sys import exit
@@ -12,62 +12,23 @@ from .bot_utils import sync_to_async, cmd_exec
 from .exceptions import NotSupportedExtractionArchive
 
 ARCH_EXT = [
-    ".tar.bz2",
-    ".tar.gz",
-    ".bz2",
-    ".gz",
-    ".tar.xz",
-    ".tar",
-    ".tbz2",
-    ".tgz",
-    ".lzma2",
-    ".zip",
-    ".7z",
-    ".z",
-    ".rar",
-    ".iso",
-    ".wim",
-    ".cab",
-    ".apm",
-    ".arj",
-    ".chm",
-    ".cpio",
-    ".cramfs",
-    ".deb",
-    ".dmg",
-    ".fat",
-    ".hfs",
-    ".lzh",
-    ".lzma",
-    ".mbr",
-    ".msi",
-    ".mslz",
-    ".nsis",
-    ".ntfs",
-    ".rpm",
-    ".squashfs",
-    ".udf",
-    ".vhd",
-    ".xar",
-    ".zst",
+    ".tar.bz2", ".tar.gz", ".bz2", ".gz", ".tar.xz", ".tar", ".tbz2", ".tgz", ".lzma2", 
+    ".zip", ".7z", ".z", ".rar", ".iso", ".wim", ".cab", ".apm", ".arj", ".chm", ".cpio", 
+    ".cramfs", ".deb", ".dmg", ".fat", ".hfs", ".lzh", ".lzma", ".mbr", ".msi", ".mslz", 
+    ".nsis", ".ntfs", ".rpm", ".squashfs", ".udf", ".vhd", ".xar", ".zst",
 ]
 
 FIRST_SPLIT_REGEX = r"(\.|_)part0*1\.rar$|(\.|_)7z\.0*1$|(\.|_)zip\.0*1$|^(?!.*(\.|_)part\d+\.rar$).*\.rar$"
-
 SPLIT_REGEX = r"\.r\d+$|\.7z\.\d+$|\.z\d+$|\.zip\.\d+$"
-
 
 def is_first_archive_split(file):
     return bool(re_search(FIRST_SPLIT_REGEX, file))
 
-
 def is_archive(file):
     return file.endswith(tuple(ARCH_EXT))
 
-
 def is_archive_split(file):
     return bool(re_search(SPLIT_REGEX, file))
-
 
 async def clean_target(path):
     if await aiopath.exists(path):
@@ -80,7 +41,6 @@ async def clean_target(path):
         except Exception as e:
             LOGGER.error(str(e))
 
-
 async def clean_download(path):
     if await aiopath.exists(path):
         LOGGER.info(f"Cleaning Download: {path}")
@@ -88,7 +48,6 @@ async def clean_download(path):
             await aiormtree(path, ignore_errors=True)
         except Exception as e:
             LOGGER.error(str(e))
-
 
 def clean_all():
     aria2.remove_all(True)
@@ -100,7 +59,6 @@ def clean_all():
         pass
     makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-
 def exit_clean_up(signal, frame):
     try:
         LOGGER.info("Please wait, while we clean up and stop the running downloads")
@@ -110,7 +68,6 @@ def exit_clean_up(signal, frame):
     except KeyboardInterrupt:
         LOGGER.warning("Force Exiting before the cleanup finishes!")
         exit(1)
-
 
 async def clean_unwanted(path, custom_list=None):
     if custom_list is None:
@@ -132,7 +89,6 @@ async def clean_unwanted(path, custom_list=None):
         if not await listdir(dirpath):
             await rmdir(dirpath)
 
-
 async def get_path_size(path):
     if await aiopath.isfile(path):
         return await aiopath.getsize(path)
@@ -142,7 +98,6 @@ async def get_path_size(path):
             abs_path = ospath.join(root, f)
             total_size += await aiopath.getsize(abs_path)
     return total_size
-
 
 async def count_files_and_folders(path, extension_filter, unwanted_files=None):
     if unwanted_files is None:
@@ -161,7 +116,6 @@ async def count_files_and_folders(path, extension_filter, unwanted_files=None):
         total_folders += len(dirs)
     return total_folders, total_files
 
-
 def get_base_name(orig_path):
     extension = next((ext for ext in ARCH_EXT if orig_path.lower().endswith(ext)), "")
     if extension != "":
@@ -169,39 +123,52 @@ def get_base_name(orig_path):
     else:
         raise NotSupportedExtractionArchive("File format not supported for extraction")
 
-
 def get_mime_type(file_path):
     mime = Magic(mime=True)
     mime_type = mime.from_file(file_path)
     mime_type = mime_type or "text/plain"
     return mime_type
 
-
-async def join_files(path):
+# Function to rename split files like file.mkv.001 to file [part 1].mkv
+async def rename_split_files(path):
     files = await listdir(path)
-    results = []
-    exists = False
+    renamed_files = []
     for file_ in files:
-        if re_search(r"\.0+2$", file_) and await sync_to_async(
-            get_mime_type, f"{path}/{file_}"
-        ) not in ["application/x-7z-compressed", "application/zip"]:
-            exists = True
-            final_name = file_.rsplit(".", 1)[0]
-            fpath = f"{path}/{final_name}"
-            cmd = f'cat "{fpath}."* > "{fpath}"'
-            _, stderr, code = await cmd_exec(cmd, True)
-            if code != 0:
-                LOGGER.error(f"Failed to join {final_name}, stderr: {stderr}")
-                if await aiopath.isfile(fpath):
-                    await remove(fpath)
-            else:
-                results.append(final_name)
+        # Match split files like .001, .002, etc.
+        match = re_search(r"\.(\d+)$", file_)
+        if match:
+            part_number = int(match.group(1))  # Extract part number
+            new_name = re_sub(r"\.(\d+)$", f" [part {part_number}]", file_)  # Rename format
+            old_path = ospath.join(path, file_)
+            new_path = ospath.join(path, new_name)
+            await aiopath.rename(old_path, new_path)  # Perform renaming
+            renamed_files.append(new_name)  # Store renamed file
+    return renamed_files
 
-    if not exists:
+# Function to join split files after renaming
+async def join_files(path):
+    renamed_files = await rename_split_files(path)
+    if not renamed_files:
         LOGGER.warning("No files to join!")
-    elif results:
+        return
+
+    results = []
+    for file_ in renamed_files:
+        base_name, extension = ospath.splitext(file_)
+        final_name = f"{base_name}{extension}"
+        cmd = f'cat "{path}/{file_}" > "{path}/{final_name}"'  # Concatenate parts
+        _, stderr, code = await cmd_exec(cmd, True)  # Execute the command
+        if code != 0:
+            LOGGER.error(f"Failed to join {final_name}, stderr: {stderr}")
+            if await aiopath.isfile(final_name):
+                await remove(final_name)
+        else:
+            results.append(final_name)  # Store the result
+
+    if results:
         LOGGER.info("Join Completed!")
+        # Remove the individual parts after joining
         for res in results:
-            for file_ in files:
-                if re_search(rf"{escape(res)}\.0[0-9]+$", file_):
+            for file_ in renamed_files:
+                if re_search(rf"{escape(res)} \[part \d+\]$", file_):
                     await remove(f"{path}/{file_}")
